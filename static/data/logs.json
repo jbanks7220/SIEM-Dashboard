@@ -1,0 +1,6 @@
+[
+  {"timestamp": "2025-11-13T01:00:00", "source": "Firewall", "event_type": "Port Scan", "severity": "High"},
+  {"timestamp": "2025-11-13T01:05:00", "source": "Web Server", "event_type": "Login Success", "severity": "Low"},
+  {"timestamp": "2025-11-13T01:10:00", "source": "IDS", "event_type": "Malware Detected", "severity": "Critical"},
+  {"timestamp": "2025-11-13T01:15:00", "source": "Database", "event_type": "Login Failure", "severity": "Medium"}
+]
