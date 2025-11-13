@@ -1,28 +1,65 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <title>SIEM Dashboard Demo</title>
+  <meta charset="utf-8"/>
+  <title>SIEM Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-  <h1>🛡️ SIEM Dashboard</h1>
+  <header>
+    <h1>SIEM Dashboard</h1>
+    <div class="top-actions">
+      <a href="{{ url_for('logout') }}">Logout</a>
+    </div>
+  </header>
 
-  <div class="cards">
+  <section class="controls">
+    <input id="search" placeholder="Search logs (message, IP, type)"/>
+    <select id="filterSource"><option value="">All sources</option></select>
+    <select id="filterType"><option value="">All types</option></select>
+    <select id="filterSeverity">
+      <option value="">All severities</option>
+      <option>Low</option><option>Medium</option><option>High</option><option>Critical</option>
+    </select>
+    <button id="applyFilters">Apply</button>
+
+    <form id="uploadForm" enctype="multipart/form-data">
+      <input type="file" name="file" id="fileInput">
+      <button type="submit">Upload logs</button>
+    </form>
+  </section>
+
+  <section class="cards">
     <div class="card" id="totalEvents">0<br><small>Total Events</small></div>
-    <div class="card" id="criticalAlerts">0<br><small>Critical Alerts</small></div>
+    <div class="card" id="criticalAlerts">0<br><small>Current Alerts</small></div>
     <div class="card" id="uniqueSources">0<br><small>Unique Sources</small></div>
-  </div>
+  </section>
 
-  <canvas id="eventChart"></canvas>
+  <section class="charts">
+    <canvas id="typeChart"></canvas>
+    <canvas id="timeChart"></canvas>
+  </section>
 
-  <table id="logTable">
-    <thead>
-      <tr><th>Timestamp</th><th>Source</th><th>Type</th><th>Severity</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <section class="alerts">
+    <h2>Alerts</h2>
+    <div id="alertCards"></div>
+  </section>
+
+  <section class="map">
+    <h2>GeoIP Map</h2>
+    <div id="mapid" style="height:320px;"></div>
+  </section>
+
+  <section class="logs">
+    <h2>Log Feed</h2>
+    <table id="logTable">
+      <thead><tr><th>Timestamp</th><th>Source</th><th>Type</th><th>Severity</th><th>Message</th><th>Src IP</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
 
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
