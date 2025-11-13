@@ -1,6 +1,8 @@
 from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
 import json, os, sqlite3, csv, io, datetime
 from werkzeug.utils import secure_filename
+import sqlite3
+from flask import g
 
 # config
 DATABASE = 'data/siem.db'
@@ -289,3 +291,4 @@ def api_meta():
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port, debug=True)
+
