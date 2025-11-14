@@ -8,12 +8,8 @@ from werkzeug.utils import secure_filename
 
 IS_RENDER = os.environ.get("RENDER")
 
-if IS_RENDER:
-    DATABASE = "/tmp/siem.db"
-    UPLOAD_FOLDER = "/tmp/uploads"
-else:
-    DATABASE = "siem.db"
-    UPLOAD_FOLDER = "uploads"
+DATABASE = "/tmp/siem.db" if IS_RENDER else "siem.db"
+UPLOAD_FOLDER = "/tmp/uploads" if IS_RENDER else "uploads"
 
 ALLOWED_EXTENSIONS = {"json", "csv"}
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
@@ -92,7 +88,7 @@ with app.app_context():
 
 
 # ===============================================================
-# RULES ENGINE — alert generator
+# RULES ENGINE
 # ===============================================================
 
 def _value(row, key):
@@ -104,33 +100,30 @@ def _value(row, key):
 def generate_alerts_for_log(log_id, row):
     conn = get_db()
     cur = conn.cursor()
-
     severity = (_value(row, "severity") or "").lower()
     event_type = (_value(row, "event_type") or "").lower()
     src_ip = _value(row, "src_ip")
-
     now = datetime.datetime.utcnow().isoformat()
 
-    # critical severity
+    # Critical severity
     if severity == "critical":
         cur.execute("""
             INSERT INTO alerts (log_id, created_at, rule, severity, message)
             VALUES (?, ?, 'critical_sev', 'Critical', ?)
         """, (log_id, now, f"Critical event: {event_type} from {src_ip}"))
 
-    # port scan
+    # Port scan
     if "scan" in event_type:
         cur.execute("""
             INSERT INTO alerts (log_id, created_at, rule, severity, message)
             VALUES (?, ?, 'port_scan', 'High', ?)
         """, (log_id, now, f"Port scan detected from {src_ip}"))
 
-    # brute-force (5 events / 10 minutes)
+    # Brute-force detection (5 events / 10 minutes)
     if src_ip:
         window = (datetime.datetime.utcnow() - datetime.timedelta(minutes=10)).isoformat()
         cur.execute("SELECT COUNT(*) AS c FROM logs WHERE src_ip = ? AND timestamp >= ?", (src_ip, window))
         count = cur.fetchone()["c"]
-
         if count >= 5:
             cur.execute("""
                 INSERT INTO alerts (log_id, created_at, rule, severity, message)
@@ -150,31 +143,24 @@ def index():
         return redirect(url_for("login"))
     return render_template("index.html")
 
-
-@app.route("/login", methods=["GET", "POST"])
+@app.route("/login", methods=["GET","POST"])
 def login():
-    if request.method == "POST":
+    if request.method=="POST":
         user = request.form.get("username")
         pw = request.form.get("password")
-
         cur = get_db().cursor()
-        cur.execute("SELECT * FROM users WHERE username = ? AND pw = ?", (user, pw))
+        cur.execute("SELECT * FROM users WHERE username=? AND pw=?", (user,pw))
         row = cur.fetchone()
-
         if row:
             session["user"] = user
             return redirect(url_for("index"))
-
-        flash("Invalid credentials", "danger")
-
+        flash("Invalid credentials","danger")
     return render_template("login.html")
-
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
-
 
 # ===============================================================
 # HEALTH CHECK
@@ -184,7 +170,7 @@ def logout():
 def health():
     return jsonify({
         "status": "ok",
-        "version": os.environ.get("RENDER_GIT_COMMIT", "local"),
+        "version": os.environ.get("RENDER_GIT_COMMIT","local"),
         "db_path": DATABASE
     })
 
@@ -204,24 +190,14 @@ def api_logs():
     event_type = request.args.get("event_type")
     q = request.args.get("q")
 
-    if severity:
-        filter_q.append("severity = ?")
-        params.append(severity)
-    if source:
-        filter_q.append("source = ?")
-        params.append(source)
-    if event_type:
-        filter_q.append("event_type = ?")
-        params.append(event_type)
-    if q:
-        filter_q.append("(message LIKE ? OR src_ip LIKE ? OR event_type LIKE ?)")
-        params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+    if severity: filter_q.append("severity=?"); params.append(severity)
+    if source: filter_q.append("source=?"); params.append(source)
+    if event_type: filter_q.append("event_type=?"); params.append(event_type)
+    if q: filter_q.append("(message LIKE ? OR src_ip LIKE ? OR event_type LIKE ?)"); params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
 
     where = "WHERE " + " AND ".join(filter_q) if filter_q else ""
-
     cur = get_db().cursor()
     cur.execute(f"SELECT * FROM logs {where} ORDER BY id DESC LIMIT ?", (*params, limit))
-
     return jsonify([dict(r) for r in cur.fetchall()])
 
 
@@ -237,65 +213,47 @@ def api_alerts():
 
 
 # ===============================================================
-# API: UPLOAD (JSON, CSV)
+# API: UPLOAD
 # ===============================================================
 
 def allowed_file(name):
-    return "." in name and name.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in name and name.rsplit(".",1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route("/api/upload", methods=["POST"])
 def api_upload():
-    if "file" not in request.files:
-        return jsonify({"error": "No file"}), 400
-
+    if "file" not in request.files: return jsonify({"error":"No file"}),400
     f = request.files["file"]
     fname = secure_filename(f.filename)
-
-    if not allowed_file(fname):
-        return jsonify({"error": "Invalid file type"}), 400
-
+    if not allowed_file(fname): return jsonify({"error":"Invalid file type"}),400
     path = os.path.join(app.config["UPLOAD_FOLDER"], fname)
     f.save(path)
-
     inserted = []
     conn = get_db()
     cur = conn.cursor()
 
     # JSON
     if fname.lower().endswith(".json"):
-        with open(path) as fh:
-            data = json.load(fh)
-            if not isinstance(data, list):
-                data = [data]
-
+        with open(path) as fh: data = json.load(fh)
+        if not isinstance(data,list): data=[data]
         rows = data
-
     # CSV
     else:
         txt = io.StringIO(open(path).read())
         rows = list(csv.DictReader(txt))
 
-    # Insert + alert generation
+    # Insert + generate alerts
     for r in rows:
         ts = r.get("timestamp") or datetime.datetime.utcnow().isoformat()
-
         cur.execute("""
             INSERT INTO logs (timestamp, source, event_type, severity, message, src_ip, lat, lon)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            ts, r.get("source"), r.get("event_type"), r.get("severity"),
-            r.get("message"), r.get("src_ip"), r.get("lat"), r.get("lon")
-        ))
-
+            VALUES (?,?,?,?,?,?,?,?)
+        """,(ts, r.get("source"), r.get("event_type"), r.get("severity"), r.get("message"), r.get("src_ip"), r.get("lat"), r.get("lon")))
         log_id = cur.lastrowid
         conn.commit()
-
-        # fetch row
         c2 = conn.cursor()
-        c2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
+        c2.execute("SELECT * FROM logs WHERE id=?",(log_id,))
         row = c2.fetchone()
-
-        generate_alerts_for_log(log_id, row)
+        generate_alerts_for_log(log_id,row)
         inserted.append(log_id)
 
     return jsonify({"inserted": inserted})
@@ -308,18 +266,15 @@ def api_upload():
 @app.route("/api/meta")
 def api_meta():
     cur = get_db().cursor()
-
     cur.execute("SELECT DISTINCT source FROM logs")
     sources = [r["source"] for r in cur.fetchall() if r["source"]]
-
     cur.execute("SELECT DISTINCT event_type FROM logs")
     types = [r["event_type"] for r in cur.fetchall() if r["event_type"]]
-
     return jsonify({"sources": sources, "event_types": types})
 
 
 # ===============================================================
-# AUTO-SEED (Render deploys)
+# AUTO-SEED
 # ===============================================================
 
 def seed_demo():
@@ -328,23 +283,19 @@ def seed_demo():
         ("2025-11-14T00:05:00Z", "Web Server", "Failed Login", "Medium", "Failed login admin", "198.51.100.10", 40.71, -74.00),
         ("2025-11-14T00:10:00Z", "IDS", "Malware Detected", "Critical", "Malware match", "192.0.2.45", 51.50, -0.12),
     ]
-
     conn = get_db()
     cur = conn.cursor()
-
     for row in demo:
         cur.execute("""
             INSERT INTO logs (timestamp, source, event_type, severity, message, src_ip, lat, lon)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?,?,?,?,?,?,?,?)
         """, row)
         log_id = cur.lastrowid
         conn.commit()
-
         c2 = conn.cursor()
-        c2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
+        c2.execute("SELECT * FROM logs WHERE id=?",(log_id,))
         r = c2.fetchone()
-
-        generate_alerts_for_log(log_id, r)
+        generate_alerts_for_log(log_id,r)
 
 @app.before_first_request
 def maybe_seed():
@@ -359,6 +310,6 @@ def maybe_seed():
 # START SERVER
 # ===============================================================
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+if __name__=="__main__":
+    port = int(os.environ.get("PORT",5000))
     app.run(host="0.0.0.0", port=port, debug=True)
