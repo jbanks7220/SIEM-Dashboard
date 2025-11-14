@@ -28,14 +28,13 @@ app.secret_key = SECRET_KEY
 # ===============================================================
 # DB HELPERS
 # ===============================================================
+
 def get_db():
     db = getattr(g, "_database", None)
     if db is None:
-        # ensure we use absolute path for safety
         db = g._database = sqlite3.connect(DATABASE)
         db.row_factory = sqlite3.Row
     return db
-
 
 @app.teardown_appcontext
 def close_connection(exception):
@@ -43,9 +42,7 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
-
 def init_db():
-    """Create required tables."""
     conn = get_db()
     cur = conn.cursor()
 
@@ -82,7 +79,7 @@ def init_db():
         )
     """)
 
-    # Default login
+    # default login
     cur.execute("SELECT COUNT(*) AS c FROM users")
     if cur.fetchone()["c"] == 0:
         cur.execute("INSERT INTO users (username, pw) VALUES (?, ?)",
@@ -90,82 +87,55 @@ def init_db():
 
     conn.commit()
 
-
 with app.app_context():
     init_db()
 
 
 # ===============================================================
-# RULES ENGINE (alerts) — robust to Row or dict
+# RULES ENGINE — alert generator
 # ===============================================================
-def _value(row_or_dict, key):
-    """Safe accessor that works for sqlite3.Row and dict-like inputs."""
+
+def _value(row, key):
     try:
-        return row_or_dict[key]
-    except Exception:
-        try:
-            return row_or_dict.get(key)  # if it's a dict
-        except Exception:
-            return None
+        return row[key]
+    except:
+        return None
 
-
-def generate_alerts_for_log(log_id, log_row):
-    """
-    log_row can be a sqlite3.Row or a dict. This function will
-    insert alerts based on simple rules.
-    """
+def generate_alerts_for_log(log_id, row):
     conn = get_db()
     cur = conn.cursor()
 
-    severity = (_value(log_row, "severity") or "").lower()
-    event_type = (_value(log_row, "event_type") or "")
-    src_ip = _value(log_row, "src_ip")
+    severity = (_value(row, "severity") or "").lower()
+    event_type = (_value(row, "event_type") or "").lower()
+    src_ip = _value(row, "src_ip")
 
-    # -- Critical severity rule
+    now = datetime.datetime.utcnow().isoformat()
+
+    # critical severity
     if severity == "critical":
         cur.execute("""
             INSERT INTO alerts (log_id, created_at, rule, severity, message)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            log_id,
-            datetime.datetime.datetime.utcnow().isoformat() if hasattr(datetime, "datetime") else datetime.datetime.utcnow().isoformat(),
-            "critical_sev",
-            "Critical",
-            f"Critical event: {event_type} from {src_ip}"
-        ))
+            VALUES (?, ?, 'critical_sev', 'Critical', ?)
+        """, (log_id, now, f"Critical event: {event_type} from {src_ip}"))
 
-    # -- Port scan rule
-    if event_type and "scan" in event_type.lower():
+    # port scan
+    if "scan" in event_type:
         cur.execute("""
             INSERT INTO alerts (log_id, created_at, rule, severity, message)
-            VALUES (?, ?, ?, ?, ?)
-        """, (
-            log_id,
-            datetime.datetime.datetime.utcnow().isoformat() if hasattr(datetime, "datetime") else datetime.datetime.utcnow().isoformat(),
-            "port_scan",
-            "High",
-            f"Port scan detected from {src_ip}"
-        ))
+            VALUES (?, ?, 'port_scan', 'High', ?)
+        """, (log_id, now, f"Port scan detected from {src_ip}"))
 
-    # -- Brute-force heuristic (5+ events in last 10 minutes)
+    # brute-force (5 events / 10 minutes)
     if src_ip:
-        window_start = (datetime.datetime.datetime.utcnow() - datetime.timedelta(minutes=10)).isoformat() if hasattr(datetime, "datetime") else (datetime.datetime.utcnow() - datetime.timedelta(minutes=10)).isoformat()
-        # Note: timestamps must be ISO strings in the logs for this to work reliably
-        cur.execute("SELECT COUNT(*) AS c FROM logs WHERE src_ip = ? AND timestamp >= ?", (src_ip, window_start))
-        count_row = cur.fetchone()
-        c = count_row["c"] if count_row and "c" in count_row.keys() else (count_row[0] if count_row else 0)
+        window = (datetime.datetime.utcnow() - datetime.timedelta(minutes=10)).isoformat()
+        cur.execute("SELECT COUNT(*) AS c FROM logs WHERE src_ip = ? AND timestamp >= ?", (src_ip, window))
+        count = cur.fetchone()["c"]
 
-        if c >= 5:
+        if count >= 5:
             cur.execute("""
                 INSERT INTO alerts (log_id, created_at, rule, severity, message)
-                VALUES (?, ?, ?, ?, ?)
-            """, (
-                log_id,
-                datetime.datetime.datetime.utcnow().isoformat() if hasattr(datetime, "datetime") else datetime.datetime.utcnow().isoformat(),
-                "brute_force",
-                "Medium",
-                f"{c} events from {src_ip} in last 10 minutes"
-            ))
+                VALUES (?, ?, 'brute_force', 'Medium', ?)
+            """, (log_id, now, f"{count} events from {src_ip} in last 10 minutes"))
 
     conn.commit()
 
@@ -173,6 +143,7 @@ def generate_alerts_for_log(log_id, log_row):
 # ===============================================================
 # ROUTES
 # ===============================================================
+
 @app.route("/")
 def index():
     if not session.get("user"):
@@ -183,16 +154,15 @@ def index():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username")
+        user = request.form.get("username")
         pw = request.form.get("password")
 
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username = ? AND pw = ?", (username, pw))
+        cur = get_db().cursor()
+        cur.execute("SELECT * FROM users WHERE username = ? AND pw = ?", (user, pw))
         row = cur.fetchone()
 
         if row:
-            session["user"] = username
+            session["user"] = user
             return redirect(url_for("index"))
 
         flash("Invalid credentials", "danger")
@@ -206,90 +176,85 @@ def logout():
     return redirect(url_for("login"))
 
 
-# health route to confirm Render is running latest code
+# ===============================================================
+# HEALTH CHECK
+# ===============================================================
+
 @app.route("/health")
 def health():
     return jsonify({
         "status": "ok",
-        "render_commit": os.environ.get("RENDER_GIT_COMMIT", "unknown"),
-        "database": DATABASE,
+        "version": os.environ.get("RENDER_GIT_COMMIT", "local"),
+        "db_path": DATABASE
     })
 
 
 # ===============================================================
 # API: LOGS
 # ===============================================================
-@app.route("/api/logs", methods=["GET"])
-def api_get_logs():
+
+@app.route("/api/logs")
+def api_logs():
+    limit = int(request.args.get("limit", 200))
+    filter_q = []
+    params = []
+
     severity = request.args.get("severity")
     source = request.args.get("source")
     event_type = request.args.get("event_type")
     q = request.args.get("q")
-    limit = int(request.args.get("limit", 200))
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    query = "SELECT * FROM logs WHERE 1=1"
-    params = []
 
     if severity:
-        query += " AND severity = ?"
+        filter_q.append("severity = ?")
         params.append(severity)
-
     if source:
-        query += " AND source = ?"
+        filter_q.append("source = ?")
         params.append(source)
-
     if event_type:
-        query += " AND event_type = ?"
+        filter_q.append("event_type = ?")
         params.append(event_type)
-
     if q:
-        query += " AND (message LIKE ? OR src_ip LIKE ? OR event_type LIKE ?)"
+        filter_q.append("(message LIKE ? OR src_ip LIKE ? OR event_type LIKE ?)")
         params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
 
-    query += " ORDER BY timestamp DESC LIMIT ?"
-    params.append(limit)
+    where = "WHERE " + " AND ".join(filter_q) if filter_q else ""
 
-    cur.execute(query, params)
-    rows = [dict(r) for r in cur.fetchall()]
-    return jsonify(rows)
+    cur = get_db().cursor()
+    cur.execute(f"SELECT * FROM logs {where} ORDER BY id DESC LIMIT ?", (*params, limit))
+
+    return jsonify([dict(r) for r in cur.fetchall()])
 
 
 # ===============================================================
 # API: ALERTS
 # ===============================================================
-@app.route("/api/alerts", methods=["GET"])
-def api_get_alerts():
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM alerts ORDER BY created_at DESC LIMIT 50")
-    rows = [dict(r) for r in cur.fetchall()]
-    return jsonify(rows)
+
+@app.route("/api/alerts")
+def api_alerts():
+    cur = get_db().cursor()
+    cur.execute("SELECT * FROM alerts ORDER BY id DESC LIMIT 50")
+    return jsonify([dict(r) for r in cur.fetchall()])
 
 
 # ===============================================================
-# API: UPLOAD LOGS (JSON + CSV)
+# API: UPLOAD (JSON, CSV)
 # ===============================================================
-def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def allowed_file(name):
+    return "." in name and name.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route("/api/upload", methods=["POST"])
 def api_upload():
     if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+        return jsonify({"error": "No file"}), 400
 
     f = request.files["file"]
-    if f.filename == "":
-        return jsonify({"error": "Empty filename"}), 400
+    fname = secure_filename(f.filename)
 
-    if not allowed_file(f.filename):
-        return jsonify({"error": "File type not allowed"}), 400
+    if not allowed_file(fname):
+        return jsonify({"error": "Invalid file type"}), 400
 
-    filename = secure_filename(f.filename)
-    path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    path = os.path.join(app.config["UPLOAD_FOLDER"], fname)
     f.save(path)
 
     inserted = []
@@ -297,69 +262,52 @@ def api_upload():
     cur = conn.cursor()
 
     # JSON
-    if filename.lower().endswith(".json"):
+    if fname.lower().endswith(".json"):
         with open(path) as fh:
             data = json.load(fh)
-            items = data if isinstance(data, list) else [data]
+            if not isinstance(data, list):
+                data = [data]
 
-            for it in items:
-                timestamp = it.get("timestamp") or datetime.datetime.utcnow().isoformat()
-
-                cur.execute("""
-                    INSERT INTO logs (timestamp, source, event_type, severity, message, src_ip, lat, lon)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    timestamp, it.get("source"), it.get("event_type"), it.get("severity"),
-                    it.get("message"), it.get("src_ip"), it.get("lat"), it.get("lon")
-                ))
-
-                log_id = cur.lastrowid
-                conn.commit()
-
-                # fetch the DB row to pass to the rules engine (safer)
-                cur2 = conn.cursor()
-                cur2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
-                row = cur2.fetchone()
-                generate_alerts_for_log(log_id, row)
-
-                inserted.append(log_id)
+        rows = data
 
     # CSV
     else:
-        stream = io.StringIO(open(path, "r").read())
-        reader = csv.DictReader(stream)
+        txt = io.StringIO(open(path).read())
+        rows = list(csv.DictReader(txt))
 
-        for it in reader:
-            timestamp = it.get("timestamp") or datetime.datetime.utcnow().isoformat()
+    # Insert + alert generation
+    for r in rows:
+        ts = r.get("timestamp") or datetime.datetime.utcnow().isoformat()
 
-            cur.execute("""
-                INSERT INTO logs (timestamp, source, event_type, severity, message, src_ip, lat, lon)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                timestamp, it.get("source"), it.get("event_type"), it.get("severity"),
-                it.get("message"), it.get("src_ip"), it.get("lat"), it.get("lon")
-            ))
+        cur.execute("""
+            INSERT INTO logs (timestamp, source, event_type, severity, message, src_ip, lat, lon)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            ts, r.get("source"), r.get("event_type"), r.get("severity"),
+            r.get("message"), r.get("src_ip"), r.get("lat"), r.get("lon")
+        ))
 
-            log_id = cur.lastrowid
-            conn.commit()
+        log_id = cur.lastrowid
+        conn.commit()
 
-            cur2 = conn.cursor()
-            cur2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
-            row = cur2.fetchone()
-            generate_alerts_for_log(log_id, row)
+        # fetch row
+        c2 = conn.cursor()
+        c2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
+        row = c2.fetchone()
 
-            inserted.append(log_id)
+        generate_alerts_for_log(log_id, row)
+        inserted.append(log_id)
 
-    return jsonify({"inserted": inserted}), 201
+    return jsonify({"inserted": inserted})
 
 
 # ===============================================================
-# API: META (filters)
+# META FILTERS
 # ===============================================================
-@app.route("/api/meta", methods=["GET"])
+
+@app.route("/api/meta")
 def api_meta():
-    conn = get_db()
-    cur = conn.cursor()
+    cur = get_db().cursor()
 
     cur.execute("SELECT DISTINCT source FROM logs")
     sources = [r["source"] for r in cur.fetchall() if r["source"]]
@@ -371,20 +319,19 @@ def api_meta():
 
 
 # ===============================================================
-# AUTO-SEED (Render-friendly)
+# AUTO-SEED (Render deploys)
 # ===============================================================
-def seed_render_demo():
+
+def seed_demo():
+    demo = [
+        ("2025-11-14T00:00:00Z", "Firewall", "Port Scan", "High", "Scan detected", "203.0.113.4", 37.77, -122.41),
+        ("2025-11-14T00:05:00Z", "Web Server", "Failed Login", "Medium", "Failed login admin", "198.51.100.10", 40.71, -74.00),
+        ("2025-11-14T00:10:00Z", "IDS", "Malware Detected", "Critical", "Malware match", "192.0.2.45", 51.50, -0.12),
+    ]
+
     conn = get_db()
     cur = conn.cursor()
-    demo = [
-        ("2025-11-14T00:00:00Z", "Firewall", "Port Scan", "High", "Scan detected", "203.0.113.4", 37.7749, -122.4194),
-        ("2025-11-14T00:05:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
-        ("2025-11-14T00:06:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
-        ("2025-11-14T00:07:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
-        ("2025-11-14T00:08:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
-        ("2025-11-14T00:09:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
-        ("2025-11-14T00:10:00Z", "IDS", "Malware Detected", "Critical", "Malware signature match", "192.0.2.45", 51.5074, -0.1278)
-    ]
+
     for row in demo:
         cur.execute("""
             INSERT INTO logs (timestamp, source, event_type, severity, message, src_ip, lat, lon)
@@ -392,29 +339,26 @@ def seed_render_demo():
         """, row)
         log_id = cur.lastrowid
         conn.commit()
-        # generate alerts for seeded rows
-        cur2 = conn.cursor()
-        cur2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
-        r = cur2.fetchone()
+
+        c2 = conn.cursor()
+        c2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
+        r = c2.fetchone()
+
         generate_alerts_for_log(log_id, r)
 
-
 @app.before_first_request
-def ensure_seed_on_render():
-    # if DB empty, seed it (Render file system starts empty each deploy)
+def maybe_seed():
     cur = get_db().cursor()
-    cur.execute("SELECT COUNT(*) as c FROM logs")
-    row = cur.fetchone()
-    count = row["c"] if row and "c" in row.keys() else (row[0] if row else 0)
-    if count == 0:
-        print("⚠️ No logs found — seeding demo data (Render environment).")
-        seed_render_demo()
-        print("⚠️ Demo data seeded.")
+    cur.execute("SELECT COUNT(*) AS c FROM logs")
+    if cur.fetchone()["c"] == 0:
+        print("⚠️ Seeding demo logs (Render)")
+        seed_demo()
 
 
 # ===============================================================
 # START SERVER
 # ===============================================================
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
