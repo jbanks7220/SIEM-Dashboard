@@ -31,6 +31,7 @@ app.secret_key = SECRET_KEY
 def get_db():
     db = getattr(g, "_database", None)
     if db is None:
+        # ensure we use absolute path for safety
         db = g._database = sqlite3.connect(DATABASE)
         db.row_factory = sqlite3.Row
     return db
@@ -95,46 +96,64 @@ with app.app_context():
 
 
 # ===============================================================
-# RULES ENGINE (alerts)
+# RULES ENGINE (alerts) — robust to Row or dict
 # ===============================================================
+def _value(row_or_dict, key):
+    """Safe accessor that works for sqlite3.Row and dict-like inputs."""
+    try:
+        return row_or_dict[key]
+    except Exception:
+        try:
+            return row_or_dict.get(key)  # if it's a dict
+        except Exception:
+            return None
+
+
 def generate_alerts_for_log(log_id, log_row):
+    """
+    log_row can be a sqlite3.Row or a dict. This function will
+    insert alerts based on simple rules.
+    """
     conn = get_db()
     cur = conn.cursor()
 
+    severity = (_value(log_row, "severity") or "").lower()
+    event_type = (_value(log_row, "event_type") or "")
+    src_ip = _value(log_row, "src_ip")
+
     # -- Critical severity rule
-    if log_row["severity"] and log_row["severity"].lower() == "critical":
+    if severity == "critical":
         cur.execute("""
             INSERT INTO alerts (log_id, created_at, rule, severity, message)
             VALUES (?, ?, ?, ?, ?)
         """, (
             log_id,
-            datetime.datetime.utcnow().isoformat(),
+            datetime.datetime.datetime.utcnow().isoformat() if hasattr(datetime, "datetime") else datetime.datetime.utcnow().isoformat(),
             "critical_sev",
             "Critical",
-            f"Critical event: {log_row['event_type']} from {log_row['src_ip']}"
+            f"Critical event: {event_type} from {src_ip}"
         ))
 
     # -- Port scan rule
-    if log_row["event_type"] and "scan" in log_row["event_type"].lower():
+    if event_type and "scan" in event_type.lower():
         cur.execute("""
             INSERT INTO alerts (log_id, created_at, rule, severity, message)
             VALUES (?, ?, ?, ?, ?)
         """, (
             log_id,
-            datetime.datetime.utcnow().isoformat(),
+            datetime.datetime.datetime.utcnow().isoformat() if hasattr(datetime, "datetime") else datetime.datetime.utcnow().isoformat(),
             "port_scan",
             "High",
-            f"Port scan detected from {log_row['src_ip']}"
+            f"Port scan detected from {src_ip}"
         ))
 
-    # -- Brute-force heuristic
-    src_ip = log_row["src_ip"]
+    # -- Brute-force heuristic (5+ events in last 10 minutes)
     if src_ip:
-        window_start = (datetime.datetime.utcnow() -
-                        datetime.timedelta(minutes=10)).isoformat()
-        cur.execute("SELECT COUNT(*) AS c FROM logs WHERE src_ip = ? AND timestamp >= ?",
-                    (src_ip, window_start))
-        c = cur.fetchone()["c"]
+        window_start = (datetime.datetime.datetime.utcnow() - datetime.timedelta(minutes=10)).isoformat() if hasattr(datetime, "datetime") else (datetime.datetime.utcnow() - datetime.timedelta(minutes=10)).isoformat()
+        # Note: timestamps must be ISO strings in the logs for this to work reliably
+        cur.execute("SELECT COUNT(*) AS c FROM logs WHERE src_ip = ? AND timestamp >= ?", (src_ip, window_start))
+        count_row = cur.fetchone()
+        c = count_row["c"] if count_row and "c" in count_row.keys() else (count_row[0] if count_row else 0)
 
         if c >= 5:
             cur.execute("""
@@ -142,7 +161,7 @@ def generate_alerts_for_log(log_id, log_row):
                 VALUES (?, ?, ?, ?, ?)
             """, (
                 log_id,
-                datetime.datetime.utcnow().isoformat(),
+                datetime.datetime.datetime.utcnow().isoformat() if hasattr(datetime, "datetime") else datetime.datetime.utcnow().isoformat(),
                 "brute_force",
                 "Medium",
                 f"{c} events from {src_ip} in last 10 minutes"
@@ -169,8 +188,7 @@ def login():
 
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username = ? AND pw = ?",
-                    (username, pw))
+        cur.execute("SELECT * FROM users WHERE username = ? AND pw = ?", (username, pw))
         row = cur.fetchone()
 
         if row:
@@ -186,6 +204,16 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+# health route to confirm Render is running latest code
+@app.route("/health")
+def health():
+    return jsonify({
+        "status": "ok",
+        "render_commit": os.environ.get("RENDER_GIT_COMMIT", "unknown"),
+        "database": DATABASE,
+    })
 
 
 # ===============================================================
@@ -287,7 +315,13 @@ def api_upload():
 
                 log_id = cur.lastrowid
                 conn.commit()
-                generate_alerts_for_log(log_id, it)
+
+                # fetch the DB row to pass to the rules engine (safer)
+                cur2 = conn.cursor()
+                cur2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
+                row = cur2.fetchone()
+                generate_alerts_for_log(log_id, row)
+
                 inserted.append(log_id)
 
     # CSV
@@ -308,7 +342,12 @@ def api_upload():
 
             log_id = cur.lastrowid
             conn.commit()
-            generate_alerts_for_log(log_id, it)
+
+            cur2 = conn.cursor()
+            cur2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
+            row = cur2.fetchone()
+            generate_alerts_for_log(log_id, row)
+
             inserted.append(log_id)
 
     return jsonify({"inserted": inserted}), 201
@@ -329,6 +368,48 @@ def api_meta():
     types = [r["event_type"] for r in cur.fetchall() if r["event_type"]]
 
     return jsonify({"sources": sources, "event_types": types})
+
+
+# ===============================================================
+# AUTO-SEED (Render-friendly)
+# ===============================================================
+def seed_render_demo():
+    conn = get_db()
+    cur = conn.cursor()
+    demo = [
+        ("2025-11-14T00:00:00Z", "Firewall", "Port Scan", "High", "Scan detected", "203.0.113.4", 37.7749, -122.4194),
+        ("2025-11-14T00:05:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
+        ("2025-11-14T00:06:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
+        ("2025-11-14T00:07:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
+        ("2025-11-14T00:08:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
+        ("2025-11-14T00:09:00Z", "Web Server", "Failed Login", "Medium", "Failed login for admin", "198.51.100.10", 40.7128, -74.0060),
+        ("2025-11-14T00:10:00Z", "IDS", "Malware Detected", "Critical", "Malware signature match", "192.0.2.45", 51.5074, -0.1278)
+    ]
+    for row in demo:
+        cur.execute("""
+            INSERT INTO logs (timestamp, source, event_type, severity, message, src_ip, lat, lon)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, row)
+        log_id = cur.lastrowid
+        conn.commit()
+        # generate alerts for seeded rows
+        cur2 = conn.cursor()
+        cur2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
+        r = cur2.fetchone()
+        generate_alerts_for_log(log_id, r)
+
+
+@app.before_first_request
+def ensure_seed_on_render():
+    # if DB empty, seed it (Render file system starts empty each deploy)
+    cur = get_db().cursor()
+    cur.execute("SELECT COUNT(*) as c FROM logs")
+    row = cur.fetchone()
+    count = row["c"] if row and "c" in row.keys() else (row[0] if row else 0)
+    if count == 0:
+        print("⚠️ No logs found — seeding demo data (Render environment).")
+        seed_render_demo()
+        print("⚠️ Demo data seeded.")
 
 
 # ===============================================================
