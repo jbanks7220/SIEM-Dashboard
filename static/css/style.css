@@ -15,6 +15,7 @@ header {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid #1f2330;
+    position: relative;
 }
 
 header h1 {
@@ -23,13 +24,49 @@ header h1 {
     font-weight: 700;
 }
 
-header a {
-    color: #7aa9ff;
-    text-decoration: none;
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 25px;
+}
+
+/* Login button */
+.login-link {
+    padding: 10px 16px;
+    background: #1b1e28;
+    border: 1px solid #2a3040;
+    border-radius: 8px;
+    color: #7aa9ff !important;
+    font-weight: bold;
+    text-decoration: none !important;
+    z-index: 5000;
+}
+.login-link:hover {
+    background: #252b3a;
+}
+
+/* Header counters */
+.header-counters {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.small-card {
+    min-width: 110px;
+    padding: 12px 12px;
+    font-size: 20px;
+}
+
+.small-card span {
+    font-size: 26px;
     font-weight: bold;
 }
-header a:hover {
-    text-decoration: underline;
+
+.small-card,
+.header-counters {
+    position: relative;
+    z-index: 1;
 }
 
 /* ===== CONTROLS ===== */
@@ -96,6 +133,7 @@ header a:hover {
     gap: 25px;
     padding: 25px;
 }
+
 canvas {
     background: #11131a;
     padding: 20px;
@@ -108,6 +146,7 @@ canvas {
 .alerts {
     padding: 25px;
 }
+
 .alerts h2 {
     margin-bottom: 10px;
 }
@@ -122,13 +161,14 @@ canvas {
     background: #1b1e28;
     padding: 15px;
     border-radius: 10px;
-    border-left: 6px solid #ef4444; /* red for severity */
+    border-left: 6px solid #ef4444;
 }
 
 /* ===== MAP ===== */
 .map {
     padding: 25px;
 }
+
 .map h2 {
     margin-bottom: 10px;
 }
@@ -177,14 +217,32 @@ tbody td {
     font-size: 14px;
 }
 
-/* Hover effect on rows */
 tbody tr:hover {
     background: #2b3242;
 }
 
-/* Responsive */
+/* ===== RESPONSIVE ===== */
 @media (max-width: 900px) {
     .charts {
         grid-template-columns: 1fr;
+    }
+
+    /* Make header clean on mobile */
+    .header-right {
+        gap: 15px;
+    }
+
+    .small-card {
+        min-width: 90px;
+        padding: 10px;
+        font-size: 16px;
+    }
+
+    .small-card span {
+        font-size: 20px;
+    }
+
+    .login-link {
+        padding: 8px 12px;
     }
 }
