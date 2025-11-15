@@ -18,57 +18,65 @@ header {
     position: relative;
 }
 
-header h1 {
-    margin: 0;
-    font-size: 26px;
-    font-weight: 700;
-}
-
-/* Right side container (login + counters) */
-.header-right {
+/* ===== LEFT LOGIN ICON BUTTON ===== */
+.header-left {
     display: flex;
     align-items: center;
-    gap: 60px; /* <-- prevents overlap */
-    position: relative;
+    justify-content: flex-start;
+    flex: 1;
 }
 
-/* Login link */
-.login-link {
-    padding: 10px 16px;
+.login-icon {
+    font-size: 26px;
+    padding: 10px 14px;
     background: #1b1e28;
     border: 1px solid #2a3040;
-    border-radius: 8px;
+    border-radius: 10px;
+    text-decoration: none !important;
     color: #7aa9ff !important;
     font-weight: bold;
-    text-decoration: none !important;
-    z-index: 99999 !important; /* <-- forces on top */
-    position: relative;
+    cursor: pointer;
+    transition: 0.2s;
 }
-.login-link:hover {
+.login-icon:hover {
     background: #252b3a;
+    transform: scale(1.07);
 }
 
-/* Counters */
+/* ===== HEADER TITLE CENTERED ===== */
+header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    text-align: center;
+    flex: 1;
+}
+
+/* ===== COUNTERS ON RIGHT ===== */
 .header-counters {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 15px;
+    flex: 1;
+    max-width: 360px;
     position: relative;
-    z-index: 1;
-    flex-wrap: nowrap; /* <-- prevents wrapping into login button */
-    max-width: 320px;  /* <-- ensures counters stay compact */
 }
 
+/* Counter cards */
 .small-card {
     min-width: 110px;
     padding: 12px 12px;
     font-size: 20px;
+    background: #1b1e28;
+    border: 1px solid #1f2330;
+    border-radius: 12px;
+    text-align: center;
 }
-
 .small-card span {
     font-size: 26px;
     font-weight: bold;
 }
+
 
 /* ===== CONTROLS ===== */
 .controls {
@@ -247,4 +255,5 @@ tbody tr:hover {
         padding: 8px 12px;
     }
 }
+
 
