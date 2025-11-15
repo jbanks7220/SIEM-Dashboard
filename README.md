@@ -2,7 +2,8 @@
 
 ## Live Demo
 
-Check out the fully deployed SIEM Dashboard here: [![Live Dashboard](https://img.shields.io/badge/Live-Dashboard-blue)](https://siem-dashboard-3q1v.onrender.com/)
+Check out the fully deployed SIEM Dashboard here:  
+[![Live Dashboard](https://img.shields.io/badge/Live-Dashboard-blue)](https://siem-dashboard-3q1v.onrender.com/)
 
 
 
