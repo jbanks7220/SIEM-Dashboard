@@ -61,3 +61,55 @@ cd siem-dashboard-demo
 pip install flask
 python app.py
 ```
+
+Install dependencies:
+```
+pip install -r requirements.txt
+```
+
+Run the Flask app:
+```
+python app.py
+```
+
+Access the dashboard:
+```
+
+http://127.0.0.1:5000
+```
+🧪 Usage
+
+Login using the default credentials:
+```
+Username: analyst
+Password: password
+```
+
+Upload log files in JSON or CSV format.
+
+Watch alerts, charts, and geo-map update in real-time.
+
+Use filters or search to analyze logs dynamically.
+
+📂 File Structure
+---
+SIEM-Dashboard/
+│
+├─ app.py              # Flask backend
+├─ requirements.txt    # Python dependencies
+├─ static/
+│  ├─ main.js          # Frontend logic
+│  └─ style.css        # Dashboard styling
+├─ templates/
+│  ├─ index.html       # Dashboard HTML
+│  └─ login.html       # Login page
+└─ uploads/            # Uploaded log files
+
+🎯 Future Improvements
+---
+
+Add role-based access for multiple users.
+
+Integrate email notifications for critical alerts.
+
+Add export functionality for logs and reports.
