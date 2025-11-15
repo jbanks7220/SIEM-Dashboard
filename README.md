@@ -93,7 +93,7 @@ Use filters or search to analyze logs dynamically.
 
 📂 File Structure
 ---
-SIEM-Dashboard/
+SIEM-Dashboard/  
 │
 ├─ app.py              # Flask backend  
 ├─ requirements.txt    # Python dependencies  
