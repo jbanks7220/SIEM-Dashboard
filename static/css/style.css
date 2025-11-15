@@ -1,3 +1,12 @@
+/* ===== GLOBAL ===== */
+body {
+    margin: 0;
+    background: #0d0f16;
+    color: #e5e7eb;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ===== HEADER ===== */
 header {
     display: flex;
     justify-content: space-between;
@@ -13,12 +22,201 @@ header {
     gap: 20px; /* spacing between logo and login */
 }
 
+header h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+}
+
 .login-link {
     color: #7aa9ff;
     text-decoration: none;
     font-weight: bold;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: #161b22;
+    border: 1px solid #1f2330;
 }
 
 .login-link:hover {
-    text-decoration: underline;
+    background: #1f2330;
+    text-decoration: none;
+}
+
+/* Header right: dashboard counters */
+.header-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.cards {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+/* ===== CONTROLS ===== */
+.controls {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    background: #11131a;
+    border-bottom: 1px solid #1f2330;
+    flex-wrap: wrap;
+}
+
+.controls input,
+.controls select,
+.controls button {
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    background: #1b1e28;
+    color: #e5e7eb;
+}
+
+.controls button {
+    background: #3b82f6;
+    cursor: pointer;
+    font-weight: bold;
+}
+.controls button:hover {
+    background: #2563eb;
+}
+
+/* ===== DASHBOARD CARDS ===== */
+.card {
+    flex: 1;
+    min-width: 140px;
+    background: #1b1e28;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    border: 1px solid #1f2330;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.4);
+}
+
+.card small {
+    display: block;
+    margin-top: 8px;
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* ===== CHARTS ===== */
+.charts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    padding: 25px;
+}
+
+canvas {
+    background: #11131a;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #1f2330;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.4);
+}
+
+/* ===== ALERTS ===== */
+.alerts {
+    padding: 25px;
+}
+.alerts h2 {
+    margin-bottom: 10px;
+}
+
+#alertCards {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.alert-card {
+    background: #1b1e28;
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 6px solid #ef4444; /* red for severity */
+}
+
+/* ===== MAP ===== */
+.map {
+    padding: 25px;
+}
+.map h2 {
+    margin-bottom: 10px;
+}
+
+#mapid {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #1f2330;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.4);
+}
+
+/* ===== LOG TABLE ===== */
+.logs {
+    padding: 25px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #1b1e28;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+thead {
+    background: #11131a;
+}
+
+thead th {
+    padding: 12px;
+    text-align: left;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+tbody tr:nth-child(odd) {
+    background: #181b24;
+}
+
+tbody tr:nth-child(even) {
+    background: #1f2330;
+}
+
+tbody td {
+    padding: 10px;
+    font-size: 14px;
+}
+
+tbody tr:hover {
+    background: #2b3242;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+    .charts {
+        grid-template-columns: 1fr;
+    }
+    .header-left {
+        gap: 10px;
+    }
+    .login-link {
+        font-size: 14px;
+        padding: 4px 8px;
+    }
+    .cards {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
 }
