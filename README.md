@@ -95,15 +95,15 @@ Use filters or search to analyze logs dynamically.
 ---
 SIEM-Dashboard/
 │
-├─ app.py              # Flask backend
-├─ requirements.txt    # Python dependencies
-├─ static/
-│  ├─ main.js          # Frontend logic
-│  └─ style.css        # Dashboard styling
-├─ templates/
-│  ├─ index.html       # Dashboard HTML
-│  └─ login.html       # Login page
-└─ uploads/            # Uploaded log files
+├─ app.py              # Flask backend  
+├─ requirements.txt    # Python dependencies  
+├─ static/  
+│  ├─ main.js          # Frontend logic  
+│  └─ style.css        # Dashboard styling  
+├─ templates/  
+│  ├─ index.html       # Dashboard HTML  
+│  └─ login.html       # Login page  
+└─ uploads/            # Uploaded log files  
 
 🎯 Future Improvements
 ---
