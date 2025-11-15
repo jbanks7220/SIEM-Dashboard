@@ -21,8 +21,9 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.secret_key = SECRET_KEY
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 
 # ===============================================================
 # DB HELPERS
@@ -89,6 +90,7 @@ def init_db():
 with app.app_context():
     init_db()
 
+
 # ===============================================================
 # RULES ENGINE — alert generator
 # ===============================================================
@@ -109,21 +111,21 @@ def generate_alerts_for_log(log_id, row):
 
     now = datetime.datetime.utcnow().isoformat()
 
-    # critical severity
+    # Critical
     if severity == "critical":
         cur.execute("""
             INSERT INTO alerts (log_id, created_at, rule, severity, message)
             VALUES (?, ?, 'critical_sev', 'Critical', ?)
         """, (log_id, now, f"Critical event: {event_type} from {src_ip}"))
 
-    # port scan
+    # Port scan
     if "scan" in event_type:
         cur.execute("""
             INSERT INTO alerts (log_id, created_at, rule, severity, message)
             VALUES (?, ?, 'port_scan', 'High', ?)
         """, (log_id, now, f"Port scan detected from {src_ip}"))
 
-    # brute-force (5 events / 10 minutes)
+    # Brute-force (5 events in 10 minutes)
     if src_ip:
         window = (datetime.datetime.utcnow() - datetime.timedelta(minutes=10)).isoformat()
         cur.execute("SELECT COUNT(*) AS c FROM logs WHERE src_ip = ? AND timestamp >= ?", (src_ip, window))
@@ -136,6 +138,7 @@ def generate_alerts_for_log(log_id, row):
             """, (log_id, now, f"{count} events from {src_ip} in last 10 minutes"))
 
     conn.commit()
+
 
 # ===============================================================
 # ROUTES
@@ -170,6 +173,7 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
+
 # ===============================================================
 # HEALTH CHECK
 # ===============================================================
@@ -181,6 +185,7 @@ def health():
         "version": os.environ.get("RENDER_GIT_COMMIT", "local"),
         "db_path": DATABASE
     })
+
 
 # ===============================================================
 # API: LOGS
@@ -217,6 +222,7 @@ def api_logs():
 
     return jsonify([dict(r) for r in cur.fetchall()])
 
+
 # ===============================================================
 # API: ALERTS
 # ===============================================================
@@ -227,8 +233,9 @@ def api_alerts():
     cur.execute("SELECT * FROM alerts ORDER BY id DESC LIMIT 50")
     return jsonify([dict(r) for r in cur.fetchall()])
 
+
 # ===============================================================
-# API: UPLOAD (JSON, CSV)
+# API: UPLOAD
 # ===============================================================
 
 def allowed_file(name):
@@ -265,7 +272,7 @@ def api_upload():
         txt = io.StringIO(open(path).read())
         rows = list(csv.DictReader(txt))
 
-    # Insert + alert generation
+    # Insert & alerts
     for r in rows:
         ts = r.get("timestamp") or datetime.datetime.utcnow().isoformat()
 
@@ -289,6 +296,7 @@ def api_upload():
 
     return jsonify({"inserted": inserted})
 
+
 # ===============================================================
 # META FILTERS
 # ===============================================================
@@ -305,42 +313,60 @@ def api_meta():
 
     return jsonify({"sources": sources, "event_types": types})
 
+
 # ===============================================================
-# AUTO-SEED (Render deploys)
+# AUTO SEED — FLASK 3 COMPATIBLE
 # ===============================================================
+
+seed_done = False
 
 def seed_demo():
     demo = [
-        ("2025-11-14T00:00:00Z", "Firewall", "Port Scan", "High", "Scan detected", "203.0.113.4", 37.77, -122.41),
-        ("2025-11-14T00:05:00Z", "Web Server", "Failed Login", "Medium", "Failed login admin", "198.51.100.10", 40.71, -74.00),
-        ("2025-11-14T00:10:00Z", "IDS", "Malware Detected", "Critical", "Malware match", "192.0.2.45", 51.50, -0.12),
+        ("2025-11-14T00:00:00Z", "Firewall", "Port Scan", "High",
+         "Scan detected", "203.0.113.4", 37.77, -122.41),
+
+        ("2025-11-14T00:05:00Z", "Web Server", "Failed Login", "Medium",
+         "Failed login admin", "198.51.100.10", 40.71, -74.00),
+
+        ("2025-11-14T00:10:00Z", "IDS", "Malware Detected", "Critical",
+         "Malware match", "192.0.2.45", 51.50, -0.12),
     ]
+
     conn = get_db()
     cur = conn.cursor()
+
     for row in demo:
         cur.execute("""
             INSERT INTO logs (timestamp, source, event_type, severity, message, src_ip, lat, lon)
-            VALUES (?,?,?,?,?,?,?,?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, row)
+
         log_id = cur.lastrowid
         conn.commit()
+
         c2 = conn.cursor()
-        c2.execute("SELECT * FROM logs WHERE id=?", (log_id,))
+        c2.execute("SELECT * FROM logs WHERE id = ?", (log_id,))
         r = c2.fetchone()
-        generate_alerts_for_log(log_id,r)
+
+        generate_alerts_for_log(log_id, r)
 
 def maybe_seed():
-    with app.app_context():
-        cur = get_db().cursor()
-        cur.execute("SELECT COUNT(*) AS c FROM logs")
-        if cur.fetchone()["c"] == 0:
-            print("⚠️ Seeding demo logs (Render)")
-            seed_demo()
+    cur = get_db().cursor()
+    cur.execute("SELECT COUNT(*) AS c FROM logs")
+    if cur.fetchone()["c"] == 0:
+        print("⚠️ Seeding demo logs (Flask 3 compatible)")
+        seed_demo()
 
-# Flask 3 replacement for before_first_request
-@app.before_serving
-def before_serving_func():
-    maybe_seed()
+@app.before_request
+def run_seed_once():
+    global seed_done
+    if not seed_done:
+        try:
+            maybe_seed()
+        except Exception as e:
+            print("Seed error:", e)
+        seed_done = True
+
 
 # ===============================================================
 # START SERVER
@@ -349,3 +375,4 @@ def before_serving_func():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=True)
+
