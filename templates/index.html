@@ -9,12 +9,23 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
-  <header>
-    <h1>SIEM Dashboard</h1>
-    <div class="top-actions">
-      <a href="{{ url_for('logout') }}">Logout</a>
+ <header>
+    <div class="header-left">
+        <a class="login-icon" href="/login" title="Login">🔐</a>
     </div>
-  </header>
+
+    <h1>SIEM Dashboard</h1>
+
+    <div class="header-counters">
+        <div class="card small-card">
+            <span id="logCount">0</span><br><small>Logs</small>
+        </div>
+        <div class="card small-card">
+            <span id="alertCount">0</span><br><small>Alerts</small>
+        </div>
+    </div>
+</header>
+
 
   <section class="controls">
     <input id="search" placeholder="Search logs (message, IP, type)"/>
@@ -64,3 +75,4 @@
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
+
