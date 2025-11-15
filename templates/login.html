@@ -6,23 +6,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <style>
+        /* RESET — prevents dashboard CSS from overriding styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* stop dashboard content from showing */
+        }
+
         body {
             background: #0d1117;
             color: #c9d1d9;
             font-family: Arial, sans-serif;
+
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+
+            position: relative;
+            z-index: 99999; /* highest layer so nothing overlaps */
         }
 
+        /* LOGIN BOX */
         .login-container {
             background: #161b22;
             padding: 35px;
             border-radius: 12px;
             width: 360px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.6);
+
+            box-shadow: 0 0 20px rgba(0,0,0,0.6);
+            position: relative;
+            z-index: 100000;
         }
 
         h2 {
@@ -81,7 +100,6 @@
 
     <h2>SIEM Dashboard Login</h2>
 
-    <!-- Flask flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -105,3 +123,4 @@
 
 </body>
 </html>
+
