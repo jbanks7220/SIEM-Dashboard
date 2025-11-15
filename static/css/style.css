@@ -24,13 +24,15 @@ header h1 {
     font-weight: 700;
 }
 
+/* Right side container (login + counters) */
 .header-right {
     display: flex;
     align-items: center;
-    gap: 25px;
+    gap: 60px; /* <-- prevents overlap */
+    position: relative;
 }
 
-/* Login button */
+/* Login link */
 .login-link {
     padding: 10px 16px;
     background: #1b1e28;
@@ -39,17 +41,22 @@ header h1 {
     color: #7aa9ff !important;
     font-weight: bold;
     text-decoration: none !important;
-    z-index: 5000;
+    z-index: 99999 !important; /* <-- forces on top */
+    position: relative;
 }
 .login-link:hover {
     background: #252b3a;
 }
 
-/* Header counters */
+/* Counters */
 .header-counters {
     display: flex;
     align-items: center;
     gap: 15px;
+    position: relative;
+    z-index: 1;
+    flex-wrap: nowrap; /* <-- prevents wrapping into login button */
+    max-width: 320px;  /* <-- ensures counters stay compact */
 }
 
 .small-card {
@@ -61,12 +68,6 @@ header h1 {
 .small-card span {
     font-size: 26px;
     font-weight: bold;
-}
-
-.small-card,
-.header-counters {
-    position: relative;
-    z-index: 1;
 }
 
 /* ===== CONTROLS ===== */
@@ -246,3 +247,4 @@ tbody tr:hover {
         padding: 8px 12px;
     }
 }
+
