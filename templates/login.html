@@ -1,27 +1,107 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <title>Login - SIEM Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta charset="UTF-8">
+    <title>SIEM Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            background: #0d1117;
+            color: #c9d1d9;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background: #161b22;
+            padding: 35px;
+            border-radius: 12px;
+            width: 360px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.6);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #58a6ff;
+        }
+
+        label {
+            font-size: 14px;
+            color: #8b949e;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid #30363d;
+            background: #0d1117;
+            color: #c9d1d9;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: #238636;
+            border: none;
+            color: white;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .btn:hover {
+            background: #2ea043;
+        }
+
+        .flash {
+            background: #da3633;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+    </style>
+
 </head>
 <body>
-  <div class="login-card">
-    <h2>SIEM Dashboard — Login</h2>
+
+<div class="login-container">
+
+    <h2>SIEM Dashboard Login</h2>
+
+    <!-- Flask flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        <ul class="flashes">
-        {% for cat, msg in messages %}
-          <li class="flash {{cat}}">{{ msg }}</li>
+        {% for category, message in messages %}
+            <div class="flash">{{ message }}</div>
         {% endfor %}
-        </ul>
       {% endif %}
     {% endwith %}
-    <form method="post">
-      <label>Username</label><input name="username" required />
-      <label>Password</label><input name="password" type="password" required />
-      <button type="submit">Sign in</button>
+
+    <form action="/login" method="POST">
+
+        <label>Username</label>
+        <input type="text" name="username" required>
+
+        <label>Password</label>
+        <input type="password" name="password" required>
+
+        <button class="btn" type="submit">Login</button>
     </form>
-  </div>
+
+</div>
+
 </body>
 </html>
