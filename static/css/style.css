@@ -1,17 +1,190 @@
-/* basic layout additions */
-header { display:flex; justify-content:space-between; align-items:center; padding:12px 24px; }
-.controls { display:flex; gap:8px; align-items:center; padding:12px 24px; }
-.cards { display:flex; gap:12px; padding:12px 24px; }
-.card { background:#222; padding:12px 18px; border-radius:8px; min-width:140px; text-align:center; }
+/* ===== GLOBAL ===== */
+body {
+    margin: 0;
+    background: #0d0f16;
+    color: #e5e7eb;
+    font-family: Arial, Helvetica, sans-serif;
+}
 
-.alert-card { border-radius:8px; padding:10px; margin:8px 0; background:#2b2b2b; color:#fff; }
-.alert-card.critical { border-left:6px solid #ff3333; }
-.alert-card.high { border-left:6px solid #ff8c00; }
-.alert-card.medium { border-left:6px solid #ffd11a; }
-.alert-card.low { border-left:6px solid #4caf50; }
+/* ===== HEADER ===== */
+header {
+    background: #11131a;
+    color: #ffffff;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #1f2330;
+}
 
-.login-card { width:320px; margin:60px auto; background:#1b1b1b; padding:20px; border-radius:8px; }
-.login-card input { width:100%; padding:8px; margin:6px 0; }
-.login-card button { padding:8px 12px; }
-.logs table { width:95%; margin:12px auto; border-collapse:collapse; }
-.logs th, .logs td { padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left; font-size:13px; }
+header h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 700;
+}
+
+header a {
+    color: #7aa9ff;
+    text-decoration: none;
+    font-weight: bold;
+}
+header a:hover {
+    text-decoration: underline;
+}
+
+/* ===== CONTROLS ===== */
+.controls {
+    display: flex;
+    gap: 10px;
+    padding: 20px;
+    background: #11131a;
+    border-bottom: 1px solid #1f2330;
+    flex-wrap: wrap;
+}
+
+.controls input,
+.controls select,
+.controls button {
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    background: #1b1e28;
+    color: #e5e7eb;
+}
+
+.controls button {
+    background: #3b82f6;
+    cursor: pointer;
+    font-weight: bold;
+}
+.controls button:hover {
+    background: #2563eb;
+}
+
+/* ===== DASHBOARD CARDS ===== */
+.cards {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+    flex-wrap: wrap;
+}
+
+.card {
+    flex: 1;
+    min-width: 200px;
+    background: #1b1e28;
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    border: 1px solid #1f2330;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.4);
+}
+
+.card small {
+    display: block;
+    margin-top: 10px;
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+/* ===== CHARTS ===== */
+.charts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 25px;
+    padding: 25px;
+}
+canvas {
+    background: #11131a;
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid #1f2330;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.4);
+}
+
+/* ===== ALERTS ===== */
+.alerts {
+    padding: 25px;
+}
+.alerts h2 {
+    margin-bottom: 10px;
+}
+
+#alertCards {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.alert-card {
+    background: #1b1e28;
+    padding: 15px;
+    border-radius: 10px;
+    border-left: 6px solid #ef4444; /* red for severity */
+}
+
+/* ===== MAP ===== */
+.map {
+    padding: 25px;
+}
+.map h2 {
+    margin-bottom: 10px;
+}
+
+#mapid {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #1f2330;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.4);
+}
+
+/* ===== LOG TABLE ===== */
+.logs {
+    padding: 25px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #1b1e28;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+thead {
+    background: #11131a;
+}
+
+thead th {
+    padding: 12px;
+    text-align: left;
+    color: #9ca3af;
+    font-size: 14px;
+}
+
+tbody tr:nth-child(odd) {
+    background: #181b24;
+}
+
+tbody tr:nth-child(even) {
+    background: #1f2330;
+}
+
+tbody td {
+    padding: 10px;
+    font-size: 14px;
+}
+
+/* Hover effect on rows */
+tbody tr:hover {
+    background: #2b3242;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .charts {
+        grid-template-columns: 1fr;
+    }
+}
