@@ -8,7 +8,8 @@ This dashboard allows you to visualize logs, alerts, geo-IP data, and system met
 ## 🌐 Live Demo
 
 Check out the fully deployed dashboard here:  
-  [![Live Dashboard](https://img.shields.io/badge/Live-Dashboard-blue)](https://siem-dashboard-3q1v.onrender.com/)
+  
+[![Live Dashboard](https://img.shields.io/badge/Live-Dashboard-blue)](https://siem-dashboard-3q1v.onrender.com/)
 
 ---
 
