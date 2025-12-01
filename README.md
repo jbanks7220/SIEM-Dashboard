@@ -57,7 +57,7 @@ Check out the fully deployed dashboard here:
 
 ### ▶️ Run Locally
 ```bash
-git clone https://github.com/<yourusername>/siem-dashboard-demo.git
+git clone https://github.com/jbanks7220/siem-dashboard-demo.git
 cd siem-dashboard-demo
 pip install flask
 python app.py
