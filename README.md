@@ -106,7 +106,8 @@ SIEM-Dashboard/
 │  └─ login.html       # Login page  
 └─ uploads/            # Uploaded log files  
 
-👨‍💻 Author
+## 👨‍💻 Author 
+
 Built by Jamir Banks
 
 Navy veteran & former CTR | Cybersecurity hobbyist | Signals intelligence & secure comms background | Focused on defense, recon & red team skills
